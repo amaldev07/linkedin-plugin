@@ -81,6 +81,31 @@ document.getElementById('startButton').addEventListener('click', async () => {
                         const messageButton = document.getElementById(buttonId);
                         if (messageButton) {
                             messageButton.click();
+
+                            // Wait for the DM message box to appear and type a message
+                            const waitForMessageBox = setInterval(() => {
+                                const editableDiv = document.querySelector('div[contenteditable="true"]');
+
+                                if (editableDiv) {
+                                    clearInterval(waitForMessageBox); // Stop checking once the box is found
+
+                                    console.log('Editable message box found. Typing message...');
+                                    editableDiv.focus(); // Focus on the message box
+                                    editableDiv.innerHTML = '<p>Hello, this is an automated message!</p>';
+
+                                    // Trigger a real "input" event
+                                    const inputEvent = new Event('input', { bubbles: true });
+                                    editableDiv.dispatchEvent(inputEvent);
+                                } else {
+                                    console.log('Waiting for the editable message box...');
+                                }
+                            }, 500); // Check every 500ms
+
+                            // Stop after 20 seconds if the box is not found
+                            setTimeout(() => {
+                                clearInterval(waitForMessageBox);
+                                console.error('Failed to find the editable message box within the timeout period.');
+                            }, 20000);
                         } else {
                             console.error('Message button not found for ID:', buttonId);
                         }
