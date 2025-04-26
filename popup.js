@@ -56,16 +56,41 @@ document.getElementById('startButton').addEventListener('click', async () => {
             buttonIdCell.textContent = item.buttonId;
             row.appendChild(buttonIdCell);
 
-            // Action column with remove button
+            // Action column with remove and msg buttons
             const actionCell = document.createElement('td');
+
+            // Remove button
             const removeButton = document.createElement('button');
             removeButton.textContent = 'Remove';
             removeButton.addEventListener('click', () => {
                 table.deleteRow(row.rowIndex);
             });
             actionCell.appendChild(removeButton);
-            row.appendChild(actionCell);
 
+            // Msg button
+            const msgButton = document.createElement('button');
+            msgButton.textContent = 'Msg';
+            msgButton.addEventListener('click', () => {
+                // Change the row's background color to light green
+                row.style.backgroundColor = 'lightgreen';
+
+                // Use the buttonId to find and click the message button in the DOM
+                chrome.scripting.executeScript({
+                    target: { tabId: tab.id },
+                    func: (buttonId) => {
+                        const messageButton = document.getElementById(buttonId);
+                        if (messageButton) {
+                            messageButton.click();
+                        } else {
+                            console.error('Message button not found for ID:', buttonId);
+                        }
+                    },
+                    args: [item.buttonId],
+                });
+            });
+            actionCell.appendChild(msgButton);
+
+            row.appendChild(actionCell);
             table.appendChild(row);
         });
 
