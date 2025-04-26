@@ -77,7 +77,7 @@ document.getElementById('startButton').addEventListener('click', async () => {
                 // Use the buttonId to find and click the message button in the DOM
                 chrome.scripting.executeScript({
                     target: { tabId: tab.id },
-                    func: (buttonId) => {
+                    func: (buttonId, name, messageTemplate) => {
                         const messageButton = document.getElementById(buttonId);
                         if (messageButton) {
                             messageButton.click();
@@ -90,8 +90,18 @@ document.getElementById('startButton').addEventListener('click', async () => {
                                     clearInterval(waitForMessageBox); // Stop checking once the box is found
 
                                     console.log('Editable message box found. Typing message...');
+
+                                    // Extract the first part of the name
+                                    const firstName = name.split(' ')[0];
+
+                                    // Replace user_name with the first part of the name and format new lines
+                                    let personalizedMessage = messageTemplate.replace('user_name', firstName).replace(/\n/g, '<br>');
+
+                                    // Encode and decode to fix character issues
+                                    personalizedMessage = decodeURIComponent(encodeURIComponent(personalizedMessage));
+
                                     editableDiv.focus(); // Focus on the message box
-                                    editableDiv.innerHTML = '<p>Hello, this is an automated message!</p>';
+                                    editableDiv.innerHTML = `<p>${personalizedMessage}</p>`;
 
                                     // Trigger a real "input" event
                                     const inputEvent = new Event('input', { bubbles: true });
@@ -110,7 +120,7 @@ document.getElementById('startButton').addEventListener('click', async () => {
                             console.error('Message button not found for ID:', buttonId);
                         }
                     },
-                    args: [item.buttonId],
+                    args: [item.buttonId, item.name, `Sub: Referral Request for Sr. Computer Scientist-Frontend Role at Adobe\n\nHi user_name,\nI came across a Frontend engineer opening at Adobe and was wondering if you’d be open to referring me.\n\nJob Id: R153473\nJob Link: https://careers.adobe.com/us/en/job/ADOBUSR153473EXTERNALENUS/Sr-Computer-Scientist-Frontend?utm_source=linkedin&utm_medium=phenom-feeds&source=LinkedIn\n\nSharing my resume here, pfa.\n\nThanks!\nAmaldev | +91-7594072480 | amaldev.psn@gmail.com`],
                 });
             });
             actionCell.appendChild(msgButton);
