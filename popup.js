@@ -70,59 +70,68 @@ document.getElementById('startButton').addEventListener('click', async () => {
             // Msg button
             const msgButton = document.createElement('button');
             msgButton.textContent = 'Msg';
+
+            // Modify the 'Msg' button functionality to dynamically load the message from message.txt
             msgButton.addEventListener('click', () => {
                 // Change the row's background color to light green
                 row.style.backgroundColor = 'lightgreen';
 
-                // Use the buttonId to find and click the message button in the DOM
-                chrome.scripting.executeScript({
-                    target: { tabId: tab.id },
-                    func: (buttonId, name, messageTemplate) => {
-                        const messageButton = document.getElementById(buttonId);
-                        if (messageButton) {
-                            messageButton.click();
+                // Read the message from message.txt dynamically
+                fetch(chrome.runtime.getURL('message.txt'))
+                    .then(response => response.text())
+                    .then(messageTemplate => {
+                        // Use the buttonId to find and click the message button in the DOM
+                        chrome.scripting.executeScript({
+                            target: { tabId: tab.id },
+                            func: (buttonId, name, messageTemplate) => {
+                                const messageButton = document.getElementById(buttonId);
+                                if (messageButton) {
+                                    messageButton.click();
 
-                            // Wait for the DM message box to appear and type a message
-                            const waitForMessageBox = setInterval(() => {
-                                const editableDiv = document.querySelector('div[contenteditable="true"]');
+                                    // Wait for the DM message box to appear and type a message
+                                    const waitForMessageBox = setInterval(() => {
+                                        const editableDiv = document.querySelector('div[contenteditable="true"]');
 
-                                if (editableDiv) {
-                                    clearInterval(waitForMessageBox); // Stop checking once the box is found
+                                        if (editableDiv) {
+                                            clearInterval(waitForMessageBox); // Stop checking once the box is found
 
-                                    console.log('Editable message box found. Typing message...');
+                                            console.log('Editable message box found. Typing message...');
 
-                                    // Extract the first part of the name
-                                    const firstName = name.split(' ')[0];
+                                            // Extract the first part of the name
+                                            const firstName = name.split(' ')[0];
 
-                                    // Replace user_name with the first part of the name and format new lines
-                                    let personalizedMessage = messageTemplate.replace('user_name', firstName).replace(/\n/g, '<br>');
+                                            // Replace user_name with the first part of the name and format new lines
+                                            let personalizedMessage = messageTemplate.replace('user_name', firstName).replace(/\n/g, '<br>');
 
-                                    // Encode and decode to fix character issues
-                                    personalizedMessage = decodeURIComponent(encodeURIComponent(personalizedMessage));
+                                            // Encode and decode to fix character issues
+                                            personalizedMessage = decodeURIComponent(encodeURIComponent(personalizedMessage));
 
-                                    editableDiv.focus(); // Focus on the message box
-                                    editableDiv.innerHTML = `<p>${personalizedMessage}</p>`;
+                                            editableDiv.focus(); // Focus on the message box
+                                            editableDiv.innerHTML = `<p>${personalizedMessage}</p>`;
 
-                                    // Trigger a real "input" event
-                                    const inputEvent = new Event('input', { bubbles: true });
-                                    editableDiv.dispatchEvent(inputEvent);
+                                            // Trigger a real "input" event
+                                            const inputEvent = new Event('input', { bubbles: true });
+                                            editableDiv.dispatchEvent(inputEvent);
+                                        } else {
+                                            console.log('Waiting for the editable message box...');
+                                        }
+                                    }, 500); // Check every 500ms
+
+                                    // Stop after 20 seconds if the box is not found
+                                    setTimeout(() => {
+                                        clearInterval(waitForMessageBox);
+                                        console.error('Failed to find the editable message box within the timeout period.');
+                                    }, 20000);
                                 } else {
-                                    console.log('Waiting for the editable message box...');
+                                    console.error('Message button not found for ID:', buttonId);
                                 }
-                            }, 500); // Check every 500ms
-
-                            // Stop after 20 seconds if the box is not found
-                            setTimeout(() => {
-                                clearInterval(waitForMessageBox);
-                                console.error('Failed to find the editable message box within the timeout period.');
-                            }, 20000);
-                        } else {
-                            console.error('Message button not found for ID:', buttonId);
-                        }
-                    },
-                    args: [item.buttonId, item.name, `Sub: Referral Request for Sr. Computer Scientist-Frontend Role at Adobe\n\nHi user_name,\nI came across a Frontend engineer opening at Adobe and was wondering if you'd be open to referring me.\n\nJob Id: R153473\nJob Link: https://careers.adobe.com/us/en/job/ADOBUSR153473EXTERNALENUS/Sr-Computer-Scientist-Frontend?utm_source=linkedin&utm_medium=phenom-feeds&source=LinkedIn\n\nSharing my resume here, pfa.\n\nThanks!\nAmaldev | +91-7594072480 | amaldev.psn@gmail.com`],
-                });
+                            },
+                            args: [item.buttonId, item.name, messageTemplate],
+                        });
+                    })
+                    .catch(error => console.error('Failed to load message.txt:', error));
             });
+
             actionCell.appendChild(msgButton);
 
             row.appendChild(actionCell);
