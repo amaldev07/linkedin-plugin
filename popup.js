@@ -1,6 +1,9 @@
-document.getElementById('startButton').addEventListener('click', async () => {
-    const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
+// Automatically execute the script when the plugin is opened
 
+chrome.tabs.query({ active: true, currentWindow: true }, async (tabs) => {
+    const [tab] = tabs;
+
+    // Inject script into the active tab
     chrome.scripting.executeScript({
         target: { tabId: tab.id },
         func: () => {
@@ -27,7 +30,18 @@ document.getElementById('startButton').addEventListener('click', async () => {
             return getUserListData();
         },
     }, (injectionResults) => {
+        if (!injectionResults || !injectionResults[0]) {
+            console.error('Failed to inject script or no results returned.');
+            return;
+        }
+
         const data = injectionResults[0].result;
+        console.log('Extracted Data:', data); // Debugging log
+
+        if (!data || data.length === 0) {
+            console.error('No data extracted. Ensure the active tab contains the required elements.');
+            return;
+        }
 
         // Create a table element
         const table = document.createElement('table');
