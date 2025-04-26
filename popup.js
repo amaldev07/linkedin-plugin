@@ -70,16 +70,8 @@ chrome.tabs.query({ active: true, currentWindow: true }, async (tabs) => {
             buttonIdCell.textContent = item.buttonId;
             row.appendChild(buttonIdCell);
 
-            // Action column with remove and msg buttons
+            // Action column with msg button only
             const actionCell = document.createElement('td');
-
-            // Remove button
-            const removeButton = document.createElement('button');
-            removeButton.textContent = 'Remove';
-            removeButton.addEventListener('click', () => {
-                table.deleteRow(row.rowIndex);
-            });
-            actionCell.appendChild(removeButton);
 
             // Msg button
             const msgButton = document.createElement('button');
