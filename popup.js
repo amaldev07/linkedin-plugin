@@ -143,7 +143,7 @@ chrome.tabs.query({ active: true, currentWindow: true }, async (tabs) => {
                                                 } else {
                                                     console.error('File input not found!');
                                                 }
-                                            }, 1000); // 3 seconds wait for safety
+                                            }, 2000); // 3 seconds wait for safety
                                         } else {
                                             console.log('Waiting for the editable message box...');
                                         }
