@@ -124,6 +124,7 @@ chrome.tabs.query({ active: true, currentWindow: true }, async (tabs) => {
                                             editableDiv.dispatchEvent(inputEvent);
 
                                             // After typing message, attach resume
+                                            const randomTimeOut = Math.floor(Math.random() * (2000 - 1000 + 1)) + 1000;
                                             setTimeout(async () => {
                                                 const fileInput = document.querySelector('input[type="file"]');
                                                 if (fileInput) {
@@ -143,7 +144,7 @@ chrome.tabs.query({ active: true, currentWindow: true }, async (tabs) => {
                                                 } else {
                                                     console.error('File input not found!');
                                                 }
-                                            }, 2000); // 3 seconds wait for safety
+                                            }, randomTimeOut); // 3 seconds wait for safety
                                         } else {
                                             console.log('Waiting for the editable message box...');
                                         }
