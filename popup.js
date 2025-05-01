@@ -148,15 +148,17 @@ chrome.tabs.query({ active: true, currentWindow: true }, async (tabs) => {
 
                                             // Clicking Send Button 
                                             setTimeout(async () => {
-                                                const sendBtn = document.querySelector(
+                                                /* const sendBtn = document.querySelector(
                                                     'button.msg-form__send-button.artdeco-button.artdeco-button--1[type="submit"]'
-                                                );
+                                                ); */
+                                                const sendBtn = Array.from(document.querySelectorAll('button'))
+                                                    .find(btn => btn.textContent.trim() === 'Send');
                                                 if (sendBtn) {
                                                     sendBtn.click();
                                                 } else {
                                                     console.warn("Send button not found");
                                                 }
-                                            }, randomTimeOut + 3000);
+                                            }, randomTimeOut + 5000);
                                         } else {
                                             console.log('Waiting for the editable message box...');
                                         }
