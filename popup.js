@@ -145,6 +145,18 @@ chrome.tabs.query({ active: true, currentWindow: true }, async (tabs) => {
                                                     console.error('File input not found!');
                                                 }
                                             }, randomTimeOut); // 3 seconds wait for safety
+
+                                            // Clicking Send Button 
+                                            setTimeout(async () => {
+                                                const sendBtn = document.querySelector(
+                                                    'button.msg-form__send-button.artdeco-button.artdeco-button--1[type="submit"]'
+                                                );
+                                                if (sendBtn) {
+                                                    sendBtn.click();
+                                                } else {
+                                                    console.warn("Send button not found");
+                                                }
+                                            }, randomTimeOut + 3000);
                                         } else {
                                             console.log('Waiting for the editable message box...');
                                         }
