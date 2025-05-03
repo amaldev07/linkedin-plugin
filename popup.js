@@ -131,21 +131,18 @@ chrome.tabs.query({ active: true, currentWindow: true }, async (tabs) => {
                                     // --- 2. Wait for the editable DIV, then type the message ---
                                     const editor = await waitForSelector('div[contenteditable="true"]');
                                     console.log('Editor ready, typing…');
-
                                     // personalize
                                     const firstName = name.split(' ')[0];
-                                    const htmlMsg = messageTemplate
-                                        .replace(/user_name/g, firstName)
-                                        .split('\n')
-                                        .map(line => `<p>${line}</p>`)
-                                        .join('');
-
-                                    editor.focus();
-                                    editor.innerHTML = htmlMsg;
+                                    // Replace user_name with the first part of the name and format new lines
+                                    let personalizedMessage = messageTemplate.replace('user_name', firstName).replace(/\n/g, '<br>');
+                                    // Encode and decode to fix character issues
+                                    personalizedMessage = decodeURIComponent(encodeURIComponent(personalizedMessage));
+                                    editor.focus(); // Focus on the message box
+                                    editor.innerHTML = `<p>${personalizedMessage}</p>`;
                                     editor.dispatchEvent(new Event('input', { bubbles: true }));
 
                                     // --- 3. Attach the resume ---
-                                    await sleep(randomDelay(1000, 3000));
+                                    await sleep(randomDelay(1000, 2000));
                                     const fileInput = await waitForSelector('input[type="file"]');
                                     const res = await fetch(resumeUrl);
                                     const blob = await res.blob();
@@ -157,8 +154,8 @@ chrome.tabs.query({ active: true, currentWindow: true }, async (tabs) => {
                                     console.log('Resume attached');
 
                                     // --- 4. Click “Send” ---
-                                    await sleep(2000); // small pause after attaching
-                                    await sleep(randomDelay(1000, 2000));
+                                    // await sleep(2000); // small pause after attaching
+                                    await sleep(randomDelay(2000, 4000));
                                     const sendBtn = Array.from(document.querySelectorAll('button'))
                                         .find(b => b.textContent.trim() === 'Send');
                                     if (sendBtn) {
@@ -169,7 +166,8 @@ chrome.tabs.query({ active: true, currentWindow: true }, async (tabs) => {
                                     }
 
                                     // --- 5. Close the DM overlay ---
-                                    await sleep(2000);
+                                    // await sleep(2000);
+                                    await sleep(randomDelay(2000, 3000));
                                     const closeBtn = Array.from(document.querySelectorAll('button.artdeco-button'))
                                         .find(b => b.textContent.trim().startsWith('Close your conversation'));
                                     if (closeBtn) {
