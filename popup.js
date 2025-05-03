@@ -95,82 +95,92 @@ chrome.tabs.query({ active: true, currentWindow: true }, async (tabs) => {
                         chrome.scripting.executeScript({
                             target: { tabId: tab.id },
                             func: async (buttonId, name, messageTemplate, resumeUrl) => {
-                                const messageButton = document.getElementById(buttonId);
-                                if (messageButton) {
-                                    messageButton.click();
-                                    // Wait for the DM message box to appear and type a message
-                                    const waitForMessageBox = setInterval(async () => {
-                                        const editableDiv = document.querySelector('div[contenteditable="true"]');
+                                // --- Helpers ---
+                                const sleep = ms => new Promise(res => setTimeout(res, ms));
 
-                                        if (editableDiv) {
-                                            clearInterval(waitForMessageBox); // Stop checking once the box is found
+                                async function waitForSelector(selector, timeout = 20000) {
+                                    const interval = 200;
+                                    let elapsed = 0;
+                                    return new Promise((resolve, reject) => {
+                                        const timer = setInterval(() => {
+                                            const el = document.querySelector(selector);
+                                            if (el) {
+                                                clearInterval(timer);
+                                                resolve(el);
+                                            } else if ((elapsed += interval) >= timeout) {
+                                                clearInterval(timer);
+                                                reject(new Error(`Timed out waiting for "${selector}"`));
+                                            }
+                                        }, interval);
+                                    });
+                                }
 
-                                            console.log('Editable message box found. Typing message...');
+                                function randomDelay(min, max) {
+                                    return Math.floor(Math.random() * (max - min + 1)) + min;
+                                }
 
-                                            // Extract the first part of the name
-                                            const firstName = name.split(' ')[0];
+                                // --- 1. Open the DM box ---
+                                const msgBtn = document.getElementById(buttonId);
+                                if (!msgBtn) {
+                                    console.error(`Couldn’t find message button #${buttonId}`);
+                                    return;
+                                }
+                                msgBtn.click();
 
-                                            // Replace user_name with the first part of the name and format new lines
-                                            let personalizedMessage = messageTemplate.replace('user_name', firstName).replace(/\n/g, '<br>');
+                                try {
+                                    // --- 2. Wait for the editable DIV, then type the message ---
+                                    const editor = await waitForSelector('div[contenteditable="true"]');
+                                    console.log('Editor ready, typing…');
 
-                                            // Encode and decode to fix character issues
-                                            personalizedMessage = decodeURIComponent(encodeURIComponent(personalizedMessage));
+                                    // personalize
+                                    const firstName = name.split(' ')[0];
+                                    const htmlMsg = messageTemplate
+                                        .replace(/user_name/g, firstName)
+                                        .split('\n')
+                                        .map(line => `<p>${line}</p>`)
+                                        .join('');
 
-                                            editableDiv.focus(); // Focus on the message box
-                                            editableDiv.innerHTML = `<p>${personalizedMessage}</p>`;
+                                    editor.focus();
+                                    editor.innerHTML = htmlMsg;
+                                    editor.dispatchEvent(new Event('input', { bubbles: true }));
 
-                                            // Trigger a real "input" event
-                                            const inputEvent = new Event('input', { bubbles: true });
-                                            editableDiv.dispatchEvent(inputEvent);
+                                    // --- 3. Attach the resume ---
+                                    await sleep(randomDelay(1000, 3000));
+                                    const fileInput = await waitForSelector('input[type="file"]');
+                                    const res = await fetch(resumeUrl);
+                                    const blob = await res.blob();
+                                    const file = new File([blob], 'Resume_Amaldev.pdf', { type: blob.type });
+                                    const dt = new DataTransfer();
+                                    dt.items.add(file);
+                                    fileInput.files = dt.files;
+                                    fileInput.dispatchEvent(new Event('change', { bubbles: true }));
+                                    console.log('Resume attached');
 
-                                            // After typing message, attach resume
-                                            const randomTimeOut = Math.floor(Math.random() * (2000 - 1000 + 1)) + 1000;
-                                            setTimeout(async () => {
-                                                const fileInput = document.querySelector('input[type="file"]');
-                                                if (fileInput) {
-                                                    // Fetch the resume again inside the page
-                                                    const response = await fetch(resumeUrl);
-                                                    const blob = await response.blob();
-                                                    const file = new File([blob], 'Resume_Amaldev.pdf', { type: blob.type });
+                                    // --- 4. Click “Send” ---
+                                    await sleep(2000); // small pause after attaching
+                                    await sleep(randomDelay(1000, 2000));
+                                    const sendBtn = Array.from(document.querySelectorAll('button'))
+                                        .find(b => b.textContent.trim() === 'Send');
+                                    if (sendBtn) {
+                                        sendBtn.click();
+                                        console.log('Message sent');
+                                    } else {
+                                        console.warn('Send button not found');
+                                    }
 
-                                                    const dataTransfer = new DataTransfer();
-                                                    dataTransfer.items.add(file);
-                                                    fileInput.files = dataTransfer.files;
+                                    // --- 5. Close the DM overlay ---
+                                    await sleep(2000);
+                                    const closeBtn = Array.from(document.querySelectorAll('button.artdeco-button'))
+                                        .find(b => b.textContent.trim().startsWith('Close your conversation'));
+                                    if (closeBtn) {
+                                        closeBtn.click();
+                                        console.log('Overlay closed');
+                                    } else {
+                                        console.warn('Close button not found');
+                                    }
 
-                                                    const changeEvent = new Event('change', { bubbles: true });
-                                                    fileInput.dispatchEvent(changeEvent);
-
-                                                    console.log('Resume attached successfully! ✅');
-                                                } else {
-                                                    console.error('File input not found!');
-                                                }
-                                            }, randomTimeOut); // 3 seconds wait for safety
-
-                                            // Clicking Send Button 
-                                            setTimeout(async () => {
-                                                /* const sendBtn = document.querySelector(
-                                                    'button.msg-form__send-button.artdeco-button.artdeco-button--1[type="submit"]'
-                                                ); */
-                                                const sendBtn = Array.from(document.querySelectorAll('button'))
-                                                    .find(btn => btn.textContent.trim() === 'Send');
-                                                if (sendBtn) {
-                                                    sendBtn.click();
-                                                } else {
-                                                    console.warn("Send button not found");
-                                                }
-                                            }, randomTimeOut + 5000);
-                                        } else {
-                                            console.log('Waiting for the editable message box...');
-                                        }
-                                    }, 500); // Check every 500ms
-
-                                    // Stop after 20 seconds if the box is not found
-                                    setTimeout(() => {
-                                        clearInterval(waitForMessageBox);
-                                        console.error('Failed to find the editable message box within the timeout period.');
-                                    }, 20000);
-                                } else {
-                                    console.error('Message button not found for ID:', buttonId);
+                                } catch (err) {
+                                    console.error(err);
                                 }
                             },
                             args: [item.buttonId, item.name, messageTemplate, resumeUrl],
