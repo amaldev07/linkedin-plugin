@@ -155,7 +155,7 @@ chrome.tabs.query({ active: true, currentWindow: true }, async (tabs) => {
 
                                     // --- 4. Click “Send” ---
                                     // await sleep(2000); // small pause after attaching
-                                    await sleep(randomDelay(2000, 4000));
+                                    await sleep(randomDelay(2000, 3000));
                                     const sendBtn = Array.from(document.querySelectorAll('button'))
                                         .find(b => b.textContent.trim() === 'Send');
                                     if (sendBtn) {
@@ -167,7 +167,7 @@ chrome.tabs.query({ active: true, currentWindow: true }, async (tabs) => {
 
                                     // --- 5. Close the DM overlay ---
                                     // await sleep(2000);
-                                    await sleep(randomDelay(2000, 3000));
+                                    await sleep(randomDelay(1500, 2000));
                                     const closeBtn = Array.from(document.querySelectorAll('button.artdeco-button'))
                                         .find(b => b.textContent.trim().startsWith('Close your conversation'));
                                     if (closeBtn) {
