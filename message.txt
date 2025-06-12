@@ -1,9 +1,10 @@
-Sub: Referral Request for Software Engineer Role at Atlassian.
+Sub: Referral Request for Software Engineer Role at Yahoo.
 
 Hi user_name,
-I came across a Frontend Engineer opening at Atlassian and was wondering if you’d be open to referring me.
+I came across a Frontend Engineer opening at Yahoo and was wondering if you’d be open to referring me.
 
-Job Link: https://careers-apac-atlassian.icims.com/jobs/18634/software-engineer-ii%2525252525252525252525252525252525252525252525252525252525252525252525252525252525252525252525252525252525252525252525252c-itsm/job?iis=LinkedIn&iisn=LinkedIn_Job_Ad&mode=job&mobile=false&width=1217&height=500&bga=true&needsRedirect=false&jan1offset=330&jun1offset=330
+Job Id: JR0025373
+Job Link: https://ouryahoo.wd5.myworkdayjobs.com/en-US/careers/job/United-States-of-America/Senior-Frontend-Web-Engineer_JR0025373?source=LinkedIn
 
 Sharing my resume here, pfa.
 
