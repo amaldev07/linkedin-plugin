@@ -15,15 +15,17 @@ chrome.tabs.query({ active: true, currentWindow: true }, async (tabs) => {
         func: () => {
             // Function to extract user list data from the DOM
             function getUserListData() {
-                const listItems = document.querySelectorAll('ul[role="list"] li');
+                // const listItems = document.querySelectorAll('ul[role="list"] li');
+                const listItems = document.querySelectorAll('div div a div div'); // Updated selector
                 const result = [];
 
                 listItems.forEach((li) => {
-                    const nameElement = li.querySelector('a span[aria-hidden="true"]');
+                    // const nameElement = li.querySelector('span.entity-result__title-text > a > span[aria-hidden="true"]'); // Updated selector
+                    const nameElement = li.querySelector('div p a'); // Updated selector
                     const name = nameElement ? nameElement.textContent.trim() : null;
 
-                    const button = li.querySelector('button[aria-label^="Message"]');
-                    const buttonId = button ? button.id : null;
+                    const button = li.querySelector('div > div > div > a'); // Selector for the message button remains the same
+                    const buttonId = button ? button.attributes.componentkey.value : null;
 
                     if (name && buttonId) {
                         result.push({ name, buttonId });
@@ -97,7 +99,7 @@ chrome.tabs.query({ active: true, currentWindow: true }, async (tabs) => {
                             func: async (buttonId, name, messageTemplate, resumeUrl) => {
                                 // --- Helpers ---
                                 const sleep = ms => new Promise(res => setTimeout(res, ms));
-
+                                
                                 async function waitForSelector(selector, timeout = 20000) {
                                     const interval = 200;
                                     let elapsed = 0;
@@ -120,7 +122,8 @@ chrome.tabs.query({ active: true, currentWindow: true }, async (tabs) => {
                                 }
 
                                 // --- 1. Open the DM box ---
-                                const msgBtn = document.getElementById(buttonId);
+                                // const msgBtn = document.getElementById(buttonId);
+                                const msgBtn =  document.querySelector('a[componentkey="'+buttonId+'"]');
                                 if (!msgBtn) {
                                     console.error(`Couldn’t find message button #${buttonId}`);
                                     return;
