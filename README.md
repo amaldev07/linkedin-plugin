@@ -27,3 +27,7 @@ if (nameElement) {
 } else {
     console.log('Name element not found');
 }
+
+---
+chat gpt
+https://chatgpt.com/share/689ce0ab-6e38-8009-9ec2-02c3b248ee4d
