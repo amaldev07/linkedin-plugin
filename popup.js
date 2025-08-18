@@ -96,10 +96,11 @@ chrome.tabs.query({ active: true, currentWindow: true }, async (tabs) => {
                         // Use the buttonId to find and click the message button in the DOM
                         chrome.scripting.executeScript({
                             target: { tabId: tab.id },
+                            world: 'MAIN',
                             func: async (buttonId, name, messageTemplate, resumeUrl) => {
                                 // --- Helpers ---
                                 const sleep = ms => new Promise(res => setTimeout(res, ms));
-                                
+
                                 async function waitForSelector(selector, timeout = 20000) {
                                     const interval = 200;
                                     let elapsed = 0;
@@ -117,22 +118,99 @@ chrome.tabs.query({ active: true, currentWindow: true }, async (tabs) => {
                                     });
                                 }
 
+                                async function waitForLinkedInEditor(timeout = 15000) {
+                                    const sleep = ms => new Promise(r => setTimeout(r, ms));
+
+                                    function visible(el) {
+                                        const r = el.getBoundingClientRect();
+                                        return r.width > 0 && r.height > 0 && getComputedStyle(el).visibility !== 'hidden';
+                                    }
+
+                                    function* roots(root) {
+                                        yield root;
+                                        if (root.shadowRoot) yield* roots(root.shadowRoot);
+                                        for (const f of root.querySelectorAll('iframe')) {
+                                            try { if (f.contentDocument) yield* roots(f.contentDocument); } catch { }
+                                        }
+                                    }
+
+                                    const start = Date.now();
+                                    while (Date.now() - start < timeout) {
+                                        // Prefer truly editable elements
+                                        for (const r of roots(document)) {
+                                            const el = Array.from(r.querySelectorAll('*')).find(e => e.isContentEditable && visible(e));
+                                            if (el) return el;
+                                        }
+                                        // Fallback patterns (covers Slate/Lexical and legacy LI)
+                                        for (const r of roots(document)) {
+                                            const el =
+                                                r.querySelector('[data-slate-editor="true"]') ||
+                                                r.querySelector('[data-lexical-editor]') ||
+                                                r.querySelector('.msg-form__contenteditable') ||
+                                                r.querySelector('[role="textbox"][contenteditable]');
+                                            if (el && visible(el)) return el;
+                                        }
+                                        await sleep(200);
+                                    }
+                                    throw new Error('Editor not found');
+                                }
+
+                                async function waitForAttachFileButton(timeout = 15000) {
+                                    const sleep = ms => new Promise(r => setTimeout(r, ms));
+                                    const start = Date.now();
+
+                                    function* roots(r) {
+                                        yield r;
+                                        if (r.shadowRoot) yield* roots(r.shadowRoot);
+                                        for (const f of r.querySelectorAll('iframe')) {
+                                            try { if (f.contentDocument) yield* roots(f.contentDocument); } catch { }
+                                        }
+                                    }
+                                    function tryFind() {
+                                        for (const r of roots(document)) {
+                                            // by icon id
+                                            const use = r.querySelector('use[href$="#attachment-small"]');
+                                            if (use) return use.closest('button');
+                                            // by data-test-icon
+                                            const icon = r.querySelector('svg[data-test-icon="attachment-small"]');
+                                            if (icon) return icon.closest('button');
+                                            // by text as a fallback
+                                            const btn = Array.from(r.querySelectorAll('button.msg-form__footer-action'))
+                                                .find(b => b.textContent.toLowerCase().includes('attach a file'));
+                                            if (btn) return btn;
+                                        }
+                                        return null;
+                                    }
+
+                                    let btn = tryFind();
+                                    while (!btn && Date.now() - start < timeout) {
+                                        await sleep(200);
+                                        btn = tryFind();
+                                    }
+                                    return btn;
+                                }
+
+
+
+
+
                                 function randomDelay(min, max) {
                                     return Math.floor(Math.random() * (max - min + 1)) + min;
                                 }
 
                                 // --- 1. Open the DM box ---
                                 // const msgBtn = document.getElementById(buttonId);
-                                const msgBtn =  document.querySelector('a[componentkey="'+buttonId+'"]');
+                                const msgBtn = document.querySelector('a[componentkey="' + buttonId + '"]');
                                 if (!msgBtn) {
                                     console.error(`Couldn’t find message button #${buttonId}`);
                                     return;
                                 }
                                 msgBtn.click();
-
+                                await sleep(randomDelay(1000, 2000));
                                 try {
                                     // --- 2. Wait for the editable DIV, then type the message ---
-                                    const editor = await waitForSelector('div[contenteditable="true"]');
+                                    // const editor = await waitForSelector('div[contenteditable="true"]');
+                                    const editor = await waitForLinkedInEditor();
                                     console.log('Editor ready, typing…');
                                     // personalize
                                     const firstName = name.split(' ')[0];
@@ -146,13 +224,16 @@ chrome.tabs.query({ active: true, currentWindow: true }, async (tabs) => {
 
                                     // --- 3. Attach the resume ---
                                     await sleep(randomDelay(1000, 2000));
-                                    const fileInput = await waitForSelector('input[type="file"]');
+                                    // const fileInput = await waitForSelector('input[type="file"]');
+                                    const fileInput = await waitForAttachFileButton();
+                                    // if (fileInput) fileBtn.click();
                                     const res = await fetch(resumeUrl);
                                     const blob = await res.blob();
                                     const file = new File([blob], 'Resume_Amaldev.pdf', { type: blob.type });
                                     const dt = new DataTransfer();
                                     dt.items.add(file);
                                     fileInput.files = dt.files;
+                                    fileInput.dispatchEvent(new Event('change', { bubbles: true }));
                                     fileInput.dispatchEvent(new Event('change', { bubbles: true }));
                                     console.log('Resume attached');
 
