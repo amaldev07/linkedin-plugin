@@ -283,7 +283,7 @@ chrome.tabs.query({ active: true, currentWindow: true }, async (tabs) => {
                                     }
 
                                     let snedButton = await waitForSendControl();
-                                    if(snedButton){
+                                    if (snedButton) {
                                         snedButton.click();
                                         console.log('Message sent');
                                     }
