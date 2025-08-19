@@ -222,11 +222,9 @@ chrome.tabs.query({ active: true, currentWindow: true }, async (tabs) => {
                                     editor.innerHTML = `<p>${personalizedMessage}</p>`;
                                     editor.dispatchEvent(new Event('input', { bubbles: true }));
 
-                                    // --- 3. Attach the resume ---
-                                    await sleep(randomDelay(1000, 2000));
-                                    // const fileInput = await waitForSelector('input[type="file"]');
+                                    // --- 3. Attach the resume : Not working---
+                                    /* await sleep(randomDelay(1000, 2000));
                                     const fileInput = await waitForAttachFileButton();
-                                    // if (fileInput) fileBtn.click();
                                     const res = await fetch(resumeUrl);
                                     const blob = await res.blob();
                                     const file = new File([blob], 'Resume_Amaldev.pdf', { type: blob.type });
@@ -235,18 +233,59 @@ chrome.tabs.query({ active: true, currentWindow: true }, async (tabs) => {
                                     fileInput.files = dt.files;
                                     fileInput.dispatchEvent(new Event('change', { bubbles: true }));
                                     fileInput.dispatchEvent(new Event('change', { bubbles: true }));
-                                    console.log('Resume attached');
+                                    console.log('Resume attached'); */
 
                                     // --- 4. Click “Send” ---
                                     // await sleep(2000); // small pause after attaching
                                     await sleep(randomDelay(2000, 3000));
-                                    const sendBtn = Array.from(document.querySelectorAll('button'))
-                                        .find(b => b.textContent.trim() === 'Send');
-                                    if (sendBtn) {
-                                        sendBtn.click();
+                                    async function waitForSendControl(timeout = 15000) {
+                                        const sleep = ms => new Promise(r => setTimeout(r, ms));
+                                        const start = Date.now();
+
+                                        function visible(el) {
+                                            if (!el) return false;
+                                            const r = el.getBoundingClientRect();
+                                            return r.width > 0 && r.height > 0 && getComputedStyle(el).visibility !== 'hidden';
+                                        }
+
+                                        function* roots(root) {
+                                            yield root;
+                                            if (root.shadowRoot) yield* roots(root.shadowRoot);
+                                            for (const f of root.querySelectorAll('iframe')) {
+                                                try { if (f.contentDocument) yield* roots(f.contentDocument); } catch { }
+                                            }
+                                        }
+
+                                        const SELS = [
+                                            'button.msg-form__send-button[type="submit"]',
+                                            'form.msg-form button[type="submit"]',
+                                            '.msg-form button[type="submit"]',
+                                            'button.msg-form__send-button',
+                                            'button[aria-label*="Send"]',
+                                            'button[title*="Send"]',
+                                        ];
+
+                                        while (Date.now() - start < timeout) {
+                                            for (const r of roots(document)) {
+                                                // try known selectors
+                                                for (const sel of SELS) {
+                                                    const el = r.querySelector(sel);
+                                                    if (el && visible(el)) return el;
+                                                }
+                                                // fallback by text content “Send”
+                                                const byText = Array.from(r.querySelectorAll('button'))
+                                                    .find(b => visible(b) && b.textContent && b.textContent.trim().toLowerCase() === 'send');
+                                                if (byText) return byText;
+                                            }
+                                            await sleep(200);
+                                        }
+                                        throw new Error('Send button not found within timeout');
+                                    }
+
+                                    let snedButton = await waitForSendControl();
+                                    if(snedButton){
+                                        snedButton.click();
                                         console.log('Message sent');
-                                    } else {
-                                        console.warn('Send button not found');
                                     }
 
                                     // --- 5. Close the DM overlay ---
