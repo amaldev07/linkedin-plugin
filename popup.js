@@ -16,22 +16,21 @@ chrome.tabs.query({ active: true, currentWindow: true }, async (tabs) => {
             // Function to extract user list data from the DOM
             function getUserListData() {
                 // const listItems = document.querySelectorAll('ul[role="list"] li');
-                const listItems = document.querySelectorAll('div div a div div'); // Updated selector
+                const listItems = document.querySelectorAll('ul[role="list"] li'); // Updated selector
                 const result = [];
-
                 listItems.forEach((li) => {
                     // const nameElement = li.querySelector('span.entity-result__title-text > a > span[aria-hidden="true"]'); // Updated selector
-                    const nameElement = li.querySelector('div p a'); // Updated selector
+                    const nameElement = li.querySelector('span[dir="ltr"] span');// Updated selector
                     const name = nameElement ? nameElement.textContent.trim() : null;
+                    console.log('Extracted name:', name); // Debugging log
 
-                    const button = li.querySelector('div > div > div > a'); // Selector for the message button remains the same
-                    const buttonId = button ? button.attributes.componentkey.value : null;
+                    const button = li.querySelector(`button[aria-label="Message ${name}"]`); // Selector for the message button remains the same
+                    const buttonId = button ? button.id : null;
 
                     if (name && buttonId) {
                         result.push({ name, buttonId });
                     }
                 });
-
                 return result;
             }
             return getUserListData();
@@ -199,10 +198,10 @@ chrome.tabs.query({ active: true, currentWindow: true }, async (tabs) => {
                                 }
 
                                 // --- 1. Open the DM box ---
-                                // const msgBtn = document.getElementById(buttonId);
-                                const msgBtn = document.querySelector('a[componentkey="' + buttonId + '"]');
+                                const msgBtn = document.getElementById(buttonId);
+                                // const msgBtn = document.querySelector('a[componentkey="' + buttonId + '"]');
                                 if (!msgBtn) {
-                                    console.error(`Couldn’t find message button #${buttonId}`);
+                                    console.error(`Couldn't find message button #${buttonId}`);
                                     return;
                                 }
                                 msgBtn.click();
