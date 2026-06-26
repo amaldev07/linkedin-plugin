@@ -1,13 +1,13 @@
-Sub: Senior Frontend Opportunities at IBM
+Sub: Senior Frontend Opportunities at Adobe
 
 Hi user_name,
 
 Hope you're doing well.
 
-I'm reaching out to check if there are any Senior Frontend opportunities available at IBM.
+I'm reaching out to check if there are any Senior Frontend opportunities available at Adobe.
 
 I'm Amaldev, a Frontend Developer with 10 years of experience.
-Currently company: Wells Fargo. 
+Currently company: Société Générale. 
 Specialized in: Angular and React.
 
 Sharing my resume here, pfa.

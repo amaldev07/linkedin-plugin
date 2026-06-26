@@ -1,6 +1,5 @@
-// Automatically execute the script when the plugin is opened
-
-chrome.tabs.query({ active: true, currentWindow: true }, async (tabs) => {
+document.getElementById('startButton').addEventListener('click', () => {
+    chrome.tabs.query({ active: true, currentWindow: true }, async (tabs) => {
     const [tab] = tabs;
 
     // Preload the resume file from your extension
@@ -13,22 +12,46 @@ chrome.tabs.query({ active: true, currentWindow: true }, async (tabs) => {
     chrome.scripting.executeScript({
         target: { tabId: tab.id },
         func: () => {
-            // Function to extract user list data from the DOM
             function getUserListData() {
-                // const listItems = document.querySelectorAll('ul[role="list"] li');
-                const listItems = document.querySelectorAll('ul[role="list"] li'); // Updated selector
+                function cleanName(text) {
+                    return (text || '')
+                        .replace(/^send a message to\s+/i, '')
+                        .replace(/^message\s+/i, '')
+                        .replace(/\bVerified\b/gi, '')
+                        .replace(/\s*[\u2022\u00b7]\s*(1st|2nd|3rd\+).*$/i, '')
+                        .replace(/\s+/g, ' ')
+                        .trim();
+                }
+
+                const listItems = document.querySelectorAll('[role="listitem"]');
                 const result = [];
                 listItems.forEach((li) => {
-                    // const nameElement = li.querySelector('span.entity-result__title-text > a > span[aria-hidden="true"]'); // Updated selector
-                    const nameElement = li.querySelector('span[dir="ltr"] span');// Updated selector
-                    const name = nameElement ? nameElement.textContent.trim() : null;
-                    console.log('Extracted name:', name); // Debugging log
+                    const messageControl = li.querySelector(
+                        'a[href*="/messaging/compose/"], button[aria-label*="message" i], a[aria-label*="message" i]'
+                    );
+                    const profileLink = li.querySelector('a[href*="/in/"]');
+                    if (!messageControl || !profileLink) return;
 
-                    const button = li.querySelector(`button[aria-label="Message ${name}"]`); // Selector for the message button remains the same
-                    const buttonId = button ? button.id : null;
+                    let name = cleanName(messageControl.getAttribute('aria-label'));
+                    if (!name) {
+                        const visibleName = li.querySelector('[aria-labelledby]') || profileLink;
+                        name = cleanName(visibleName.textContent.split('\n')[0]);
+                    }
 
-                    if (name && buttonId) {
-                        result.push({ name, buttonId });
+                    const href = messageControl.getAttribute('href');
+                    const componentKey = messageControl.getAttribute('componentkey');
+                    const ariaLabel = messageControl.getAttribute('aria-label');
+                    const buttonId = messageControl.id || null;
+
+                    if (name && (buttonId || href || componentKey || ariaLabel)) {
+                        result.push({
+                            name,
+                            buttonId,
+                            href,
+                            componentKey,
+                            ariaLabel,
+                            target: buttonId || componentKey || href || ariaLabel
+                        });
                     }
                 });
                 return result;
@@ -55,7 +78,7 @@ chrome.tabs.query({ active: true, currentWindow: true }, async (tabs) => {
 
         // Create table header
         const headerRow = document.createElement('tr');
-        ['Name', 'Button ID', 'Action'].forEach(headerText => {
+        ['Name', 'Message Target', 'Action'].forEach(headerText => {
             const th = document.createElement('th');
             th.textContent = headerText;
             headerRow.appendChild(th);
@@ -72,9 +95,9 @@ chrome.tabs.query({ active: true, currentWindow: true }, async (tabs) => {
             row.appendChild(nameCell);
 
             // Button ID column
-            const buttonIdCell = document.createElement('td');
-            buttonIdCell.textContent = item.buttonId;
-            row.appendChild(buttonIdCell);
+            const targetCell = document.createElement('td');
+            targetCell.textContent = item.target;
+            row.appendChild(targetCell);
 
             // Action column with msg button only
             const actionCell = document.createElement('td');
@@ -92,11 +115,11 @@ chrome.tabs.query({ active: true, currentWindow: true }, async (tabs) => {
                 fetch(chrome.runtime.getURL('message.txt'))
                     .then(response => response.text())
                     .then(messageTemplate => {
-                        // Use the buttonId to find and click the message button in the DOM
+                        // Use stable message-link metadata to find and click the message control in the DOM
                         chrome.scripting.executeScript({
                             target: { tabId: tab.id },
                             world: 'MAIN',
-                            func: async (buttonId, name, messageTemplate, resumeUrl) => {
+                            func: async (messageTarget, name, messageTemplate, resumeUrl) => {
                                 // --- Helpers ---
                                 const sleep = ms => new Promise(res => setTimeout(res, ms));
 
@@ -197,11 +220,39 @@ chrome.tabs.query({ active: true, currentWindow: true }, async (tabs) => {
                                     return Math.floor(Math.random() * (max - min + 1)) + min;
                                 }
 
+                                function cssValue(value) {
+                                    if (window.CSS && CSS.escape) return CSS.escape(value);
+                                    return String(value).replace(/\\/g, '\\\\').replace(/"/g, '\\"');
+                                }
+
+                                function findMessageControl(target) {
+                                    if (target.buttonId) {
+                                        const byId = document.getElementById(target.buttonId);
+                                        if (byId) return byId;
+                                    }
+                                    if (target.componentKey) {
+                                        const byComponent = document.querySelector(`[componentkey="${cssValue(target.componentKey)}"]`);
+                                        if (byComponent) return byComponent;
+                                    }
+                                    if (target.href) {
+                                        const href = target.href;
+                                        const byHref = document.querySelector(`a[href="${cssValue(href)}"]`) ||
+                                            Array.from(document.querySelectorAll('a[href*="/messaging/compose/"]'))
+                                                .find(a => a.getAttribute('href') === href || a.href.endsWith(href));
+                                        if (byHref) return byHref;
+                                    }
+                                    if (target.ariaLabel) {
+                                        const label = target.ariaLabel.toLowerCase();
+                                        return Array.from(document.querySelectorAll('a[aria-label], button[aria-label]'))
+                                            .find(el => el.getAttribute('aria-label').toLowerCase() === label);
+                                    }
+                                    return null;
+                                }
+
                                 // --- 1. Open the DM box ---
-                                const msgBtn = document.getElementById(buttonId);
-                                // const msgBtn = document.querySelector('a[componentkey="' + buttonId + '"]');
+                                const msgBtn = findMessageControl(messageTarget);
                                 if (!msgBtn) {
-                                    console.error(`Couldn't find message button #${buttonId}`);
+                                    console.error('Could not find message control', messageTarget);
                                     return;
                                 }
                                 msgBtn.click();
@@ -303,7 +354,7 @@ chrome.tabs.query({ active: true, currentWindow: true }, async (tabs) => {
                                     console.error(err);
                                 }
                             },
-                            args: [item.buttonId, item.name, messageTemplate, resumeUrl],
+                            args: [item, item.name, messageTemplate, resumeUrl],
                         });
                     })
                     .catch(error => console.error('Failed to load message.txt:', error));
@@ -320,4 +371,5 @@ chrome.tabs.query({ active: true, currentWindow: true }, async (tabs) => {
         container.innerHTML = ''; // Clear previous content
         container.appendChild(table);
     });
+});
 });
