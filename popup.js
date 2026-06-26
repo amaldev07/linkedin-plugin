@@ -106,6 +106,10 @@ document.getElementById('startButton').addEventListener('click', () => {
             const msgButton = document.createElement('button');
             msgButton.type = 'button';
             msgButton.textContent = 'Msg';
+            msgButton.style.minWidth = '42px';
+            msgButton.style.padding = '6px 12px';
+            msgButton.style.margin = '2px';
+            msgButton.style.cursor = 'pointer';
 
             // Skip column
             const skipCell = document.createElement('td');
