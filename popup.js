@@ -78,7 +78,7 @@ document.getElementById('startButton').addEventListener('click', () => {
 
         // Create table header
         const headerRow = document.createElement('tr');
-        ['Name', 'Message Target', 'Action'].forEach(headerText => {
+        ['Name', 'Message Target', 'Action', 'Skip'].forEach(headerText => {
             const th = document.createElement('th');
             th.textContent = headerText;
             headerRow.appendChild(th);
@@ -99,12 +99,27 @@ document.getElementById('startButton').addEventListener('click', () => {
             targetCell.textContent = item.target;
             row.appendChild(targetCell);
 
-            // Action column with msg button only
+            // Action column
             const actionCell = document.createElement('td');
 
             // Msg button
             const msgButton = document.createElement('button');
+            msgButton.type = 'button';
             msgButton.textContent = 'Msg';
+
+            // Skip column
+            const skipCell = document.createElement('td');
+            const skipButton = document.createElement('button');
+            skipButton.type = 'button';
+            skipButton.textContent = 'X';
+            skipButton.title = `Skip ${item.name}`;
+            skipButton.style.minWidth = '42px';
+            skipButton.style.padding = '6px 12px';
+            skipButton.style.margin = '2px';
+            skipButton.style.cursor = 'pointer';
+            skipButton.addEventListener('click', () => {
+                row.remove();
+            });
 
             // Modify the 'Msg' button functionality to dynamically load the message from message.txt
             msgButton.addEventListener('click', () => {
@@ -112,7 +127,8 @@ document.getElementById('startButton').addEventListener('click', () => {
                 row.style.backgroundColor = 'lightgreen';
 
                 // Read the message from message.txt dynamically
-                fetch(chrome.runtime.getURL('message.txt'))
+                // fetch(chrome.runtime.getURL('message.txt'))
+                fetch(chrome.runtime.getURL('message_hr_coldmail.txt'))
                     .then(response => response.text())
                     .then(messageTemplate => {
                         // Use stable message-link metadata to find and click the message control in the DOM
@@ -361,8 +377,10 @@ document.getElementById('startButton').addEventListener('click', () => {
             });
 
             actionCell.appendChild(msgButton);
+            skipCell.appendChild(skipButton);
 
             row.appendChild(actionCell);
+            row.appendChild(skipCell);
             table.appendChild(row);
         });
 
