@@ -142,6 +142,8 @@ document.getElementById('startButton').addEventListener('click', () => {
                             func: async (messageTarget, name, messageTemplate, resumeUrl) => {
                                 // --- Helpers ---
                                 const sleep = ms => new Promise(res => setTimeout(res, ms));
+                                document.getElementById('linkedin-dm-force-hide-overlays')?.remove();
+                                document.getElementById('linkedin-dm-hide-message-overlay')?.remove();
 
                                 async function waitForSelector(selector, timeout = 20000) {
                                     const interval = 200;
@@ -352,22 +354,178 @@ document.getElementById('startButton').addEventListener('click', () => {
                                         throw new Error('Send button not found within timeout');
                                     }
 
+                                    async function waitForMessageSent(timeout = 3000) {
+                                        const start = Date.now();
+
+                                        function sentIndicatorExists() {
+                                            return Boolean(
+                                                document.querySelector('[data-test-msg-cross-pillar-message-sending-indicator-presenter__sending-indicator--sent]') ||
+                                                document.querySelector('.msg-s-event-with-indicator__sending-indicator--sent') ||
+                                                Array.from(document.querySelectorAll('[title]'))
+                                                    .find(el => (el.getAttribute('title') || '').toLowerCase().startsWith('sent at'))
+                                            );
+                                        }
+
+                                        while (Date.now() - start < timeout) {
+                                            if (sentIndicatorExists()) return true;
+                                            await sleep(100);
+                                        }
+
+                                        console.warn('Sent indicator was not found before timeout; closing anyway');
+                                        return false;
+                                    }
+
                                     let snedButton = await waitForSendControl();
                                     if (snedButton) {
                                         snedButton.click();
                                         console.log('Message sent');
+                                        await waitForMessageSent();
                                     }
 
                                     // --- 5. Close the DM overlay ---
-                                    // await sleep(2000);
-                                    await sleep(randomDelay(1500, 2000));
-                                    const closeBtn = Array.from(document.querySelectorAll('button.artdeco-button'))
-                                        .find(b => b.textContent.trim().startsWith('Close your conversation'));
-                                    if (closeBtn) {
-                                        closeBtn.click();
-                                        console.log('Overlay closed');
+                                    await sleep(250);
+
+                                    async function closeMessagingOverlay(timeout = 2500) {
+                                        const start = Date.now();
+
+                                        function visible(el) {
+                                            if (!el) return false;
+                                            const r = el.getBoundingClientRect();
+                                            return r.width > 0 && r.height > 0 && getComputedStyle(el).visibility !== 'hidden';
+                                        }
+
+                                        function pressButton(button) {
+                                            console.log('Pressing message close button:', button.id || button.textContent.trim());
+                                            button.scrollIntoView({ block: 'center', inline: 'center' });
+                                            button.focus();
+                                            ['pointerdown', 'mousedown', 'pointerup', 'mouseup', 'click'].forEach(type => {
+                                                button.dispatchEvent(new MouseEvent(type, {
+                                                    bubbles: true,
+                                                    cancelable: true,
+                                                    view: window
+                                                }));
+                                            });
+                                            button.click();
+                                        }
+
+                                        function getSearchRoots(root = document) {
+                                            const roots = [root];
+                                            const elements = root.querySelectorAll ? root.querySelectorAll('*') : [];
+                                            for (const element of elements) {
+                                                if (element.shadowRoot) roots.push(...getSearchRoots(element.shadowRoot));
+                                                if (element.tagName === 'IFRAME') {
+                                                    try {
+                                                        if (element.contentDocument) roots.push(...getSearchRoots(element.contentDocument));
+                                                    } catch { }
+                                                }
+                                            }
+                                            return roots;
+                                        }
+
+                                        function isClosed() {
+                                            const selector = '.msg-overlay-conversation-bubble--is-active, .msg-overlay-conversation-bubble[data-msg-overlay-conversation-bubble-open], .msg-overlay-conversation-bubble[role="dialog"]';
+                                            return !getSearchRoots()
+                                                .flatMap(root => Array.from(root.querySelectorAll(selector)))
+                                                .some(visible);
+                                        }
+
+                                        function findCloseButton() {
+                                            const allRoots = getSearchRoots();
+                                            for (const root of allRoots) {
+                                                const exactCloseIcon = root.querySelector(
+                                                    '.msg-overlay-conversation-bubble--is-active button.msg-overlay-bubble-header__control svg[data-test-icon="close-small"], ' +
+                                                    '.msg-overlay-conversation-bubble--is-active button.msg-overlay-bubble-header__control use[href="#close-small"], ' +
+                                                    '.msg-overlay-conversation-bubble button.msg-overlay-bubble-header__control svg[data-test-icon="close-small"], ' +
+                                                    '.msg-overlay-conversation-bubble button.msg-overlay-bubble-header__control use[href="#close-small"]'
+                                                );
+                                                const exactCloseButton = exactCloseIcon ? exactCloseIcon.closest('button.msg-overlay-bubble-header__control') : null;
+                                                if (exactCloseButton) return exactCloseButton;
+                                            }
+
+                                            const overlaySelector = '.msg-overlay-conversation-bubble--is-active, .msg-overlay-conversation-bubble[data-msg-overlay-conversation-bubble-open], .msg-overlay-conversation-bubble[role="dialog"], .msg-overlay-conversation-bubble';
+                                            const overlays = allRoots
+                                                .flatMap(root => Array.from(root.querySelectorAll(overlaySelector)))
+                                                .filter(visible);
+
+                                            const rootsToSearch = overlays.length ? overlays : allRoots;
+
+                                            const selectors = [
+                                                '.msg-overlay-bubble-header__controls button',
+                                                'button[aria-label^="Close your conversation"]',
+                                                'button[aria-label*="Close your conversation"]',
+                                                'button[aria-label*="Close conversation"]',
+                                                'button[aria-label*="Close"]',
+                                                'button[aria-label*="Dismiss"]',
+                                                'button[title*="Close"]',
+                                                'button[title*="Dismiss"]'
+                                            ];
+
+                                            for (const root of rootsToSearch) {
+                                                const iconButton = Array.from(root.querySelectorAll('button'))
+                                                    .find(button => visible(button) && button.querySelector(
+                                                        'svg[data-test-icon="close-small"], use[href*="close-small"]'
+                                                    ));
+                                                if (iconButton) return iconButton;
+
+                                                const headerCloseButton = Array.from(root.querySelectorAll(
+                                                    '.msg-overlay-bubble-header__controls > button.msg-overlay-bubble-header__control'
+                                                )).find(button => {
+                                                    if (!visible(button)) return false;
+                                                    return !button.classList.contains('msg-overlay-conversation-bubble__expand-btn');
+                                                });
+                                                if (headerCloseButton) return headerCloseButton;
+
+                                                const headerButtons = Array.from(root.querySelectorAll('.msg-overlay-bubble-header__controls > button'))
+                                                    .filter(visible);
+                                                if (headerButtons.length) return headerButtons[headerButtons.length - 1];
+
+                                                for (const selector of selectors) {
+                                                    const buttons = Array.from(root.querySelectorAll(selector));
+                                                    const button = buttons.find(button => {
+                                                        if (!visible(button)) return false;
+                                                        const label = `${button.getAttribute('aria-label') || ''} ${button.title || ''} ${button.textContent || ''}`.toLowerCase();
+                                                        return label.includes('close') || label.includes('dismiss');
+                                                    });
+                                                    if (button) return button;
+                                                }
+
+                                                const textButton = Array.from(root.querySelectorAll('button'))
+                                                    .find(button => {
+                                                        if (!visible(button)) return false;
+                                                        const label = `${button.getAttribute('aria-label') || ''} ${button.title || ''} ${button.textContent || ''}`.toLowerCase();
+                                                        return label.includes('close your conversation') || label.includes('close conversation');
+                                                    });
+                                                if (textButton) return textButton;
+                                            }
+
+                                            return null;
+                                        }
+
+                                        while (Date.now() - start < timeout) {
+                                            const closeBtn = findCloseButton();
+                                            if (closeBtn) {
+                                                pressButton(closeBtn);
+                                                await sleep(500);
+                                                if (isClosed()) return true;
+                                            }
+                                            await sleep(200);
+                                        }
+
+                                        document.dispatchEvent(new KeyboardEvent('keydown', {
+                                            key: 'Escape',
+                                            code: 'Escape',
+                                            keyCode: 27,
+                                            which: 27,
+                                            bubbles: true
+                                        }));
+                                        await sleep(500);
+                                        return isClosed();
+                                    }
+
+                                    if (await closeMessagingOverlay()) {
+                                        console.log('Message overlay closed');
                                     } else {
-                                        console.warn('Close button not found');
+                                        console.warn('Message overlay close button was not accepted');
                                     }
 
                                 } catch (err) {

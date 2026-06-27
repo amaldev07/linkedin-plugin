@@ -1,12 +1,12 @@
-Sub: Senior Frontend Opportunities at Adobe
+Sub: Senior Frontend Opportunities at Google
 
 Hi user_name,
 
 Hope you're doing well.
 
-I'm reaching out to check if there are any Senior Frontend opportunities available at Adobe.
+I'm reaching out to check if there are any Senior Frontend opportunities available at Google.
 
-I'm Amaldev, a Frontend Developer with 10 years of experience.
+I'm Amaldev, a Frontend Developer with 12 years of experience.
 Currently company: Societe Generale. 
 Specialized in: Angular, Javascript, Typescript, Html/Css.
 
